@@ -1,0 +1,28 @@
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Segoe UI,Arial,sans-serif;background:#f4f7fb;color:#172033}
+header{background:linear-gradient(135deg,#243b55,#141e30);color:white;padding:28px 7%;box-shadow:0 4px 15px #0002}
+header h1{font-size:30px} header p{opacity:.8;margin-top:6px}
+main{width:86%;max-width:1200px;margin:28px auto}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:22px}
+.stat{background:white;padding:22px;border-radius:14px;box-shadow:0 4px 18px #0000000b}
+.stat span{display:block;color:#718096;font-size:14px}.stat strong{display:block;font-size:30px;margin-top:8px}
+.panel,.info-card{background:white;border-radius:14px;box-shadow:0 4px 18px #0000000b}
+.panel{padding:22px}.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+h2{font-size:21px}button{border:0;background:#2563eb;color:white;padding:11px 17px;border-radius:9px;cursor:pointer;font-weight:600}
+button:hover{filter:brightness(.94)}button.secondary{background:#64748b}
+.search-row{display:flex;gap:10px;margin-bottom:16px}.search-row input{flex:1}
+input{width:100%;padding:12px;border:1px solid #d5dbe5;border-radius:8px;outline:none;font-size:14px}
+input:focus{border-color:#2563eb}
+.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:14px 10px;border-bottom:1px solid #edf0f5;font-size:14px}
+th{background:#f8fafc;color:#64748b}.badge{padding:6px 10px;border-radius:20px;font-size:12px;font-weight:700}
+.available{background:#dcfce7;color:#166534}.issued{background:#fee2e2;color:#991b1b}
+.actions{display:flex;gap:6px;flex-wrap:wrap}.actions button{padding:7px 10px;font-size:12px}
+.danger{background:#dc2626}.return{background:#059669}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px}.info-card{padding:22px}
+.info-card h3{margin-bottom:10px}.info-card p{color:#64748b;line-height:1.6;margin-bottom:10px}
+#message{min-height:28px;padding:5px}.ok{color:#15803d}.err{color:#dc2626}
+.modal{display:none;position:fixed;inset:0;background:#0008;align-items:center;justify-content:center}
+.modal-box{background:white;padding:26px;border-radius:15px;width:min(430px,90%);position:relative}
+.modal-box h2{margin-bottom:18px}.modal-box form{display:grid;gap:12px}.close{position:absolute;right:12px;top:10px;background:none;color:#555;font-size:25px;padding:4px}
+@media(max-width:700px){.stats,.info-grid{grid-template-columns:1fr}.search-row{flex-wrap:wrap}.search-row input{flex-basis:100%}header h1{font-size:23px}}

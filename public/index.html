@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Library Management System</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div>
+    <h1>📚 Library Management System</h1>
+    <p>BST + Hashing powered C++ Web Application</p>
+  </div>
+</header>
+
+<main>
+  <section class="stats">
+    <div class="stat"><span>Total Books</span><strong id="total">0</strong></div>
+    <div class="stat"><span>Available</span><strong id="available">0</strong></div>
+    <div class="stat"><span>Issued</span><strong id="issued">0</strong></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Book Management</h2>
+      <button onclick="openAdd()">＋ Add Book</button>
+    </div>
+    <div class="search-row">
+      <input id="search" type="number" placeholder="Search by Book ID using Hashing...">
+      <button onclick="searchBook()">Search</button>
+      <button class="secondary" onclick="loadBooks()">Show All (BST Inorder)</button>
+    </div>
+    <div id="message"></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Title</th><th>Author</th><th>Category</th><th>Status</th><th>Action</th></tr>
+        </thead>
+        <tbody id="bookRows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="info-grid">
+    <div class="info-card">
+      <h3>🌳 Binary Search Tree</h3>
+      <p>Books are stored by Book ID in a BST. Inorder traversal displays books in sorted ID order.</p>
+      <b>Insert • Search • Delete • Inorder Display</b>
+    </div>
+    <div class="info-card">
+      <h3>⚡ Hash Table</h3>
+      <p>Book IDs are mapped using a custom hash table for fast average-case lookup.</p>
+      <b>Average Search: O(1)</b>
+    </div>
+  </section>
+</main>
+
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <button class="close" onclick="closeModal()">×</button>
+    <h2>Add New Book</h2>
+    <form id="bookForm">
+      <input name="id" type="number" placeholder="Book ID" required>
+      <input name="title" placeholder="Book Title" required>
+      <input name="author" placeholder="Author" required>
+      <input name="category" placeholder="Category">
+      <button type="submit">Add Book</button>
+    </form>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
