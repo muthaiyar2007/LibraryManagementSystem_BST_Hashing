@@ -400,10 +400,9 @@ string bookToJson(Book b) {
 
 void sendResponse(
     int client,
-    string body,
-    string contentType = "text/html"
+    const string& body,
+    const string& contentType = "text/html; charset=UTF-8"
 ) {
-
     string response =
         "HTTP/1.1 200 OK\r\n"
         "Content-Type: " + contentType + "\r\n"
@@ -565,22 +564,21 @@ void handleRequest(int client) {
 
         contents << file.rdbuf();
 
-        string contentType = "text/plain";
+        string contentType;
 
-        if (path.find(".html") != string::npos)
-            contentType = "text/html";
+if (path == "/" || path == "/index.html")
+    contentType = "text/html; charset=UTF-8";
 
-        else if (path.find(".css") != string::npos)
-            contentType = "text/css";
+else if (path == "/style.css")
+    contentType = "text/css; charset=UTF-8";
 
-        else if (path.find(".js") != string::npos)
-            contentType = "application/javascript";
+else if (path == "/app.js")
+    contentType = "application/javascript; charset=UTF-8";
 
-        sendResponse(
-            client,
-            contents.str(),
-            contentType
-        );
+else
+    contentType = "text/plain; charset=UTF-8";
+
+sendResponse(client, contents.str(), contentType);
 
         return;
     }
