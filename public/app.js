@@ -1,4 +1,4 @@
-```javascript
+javascript
 const $ = id => document.getElementById(id);
 
 // ============================================================
@@ -470,4 +470,3 @@ async function returnBook(id) {
 // ============================================================
 
 loadBooks();
-```
