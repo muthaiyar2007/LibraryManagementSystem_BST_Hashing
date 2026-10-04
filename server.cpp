@@ -1,3 +1,4 @@
+```cpp
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -15,7 +16,9 @@
 
 using namespace std;
 
-// ==================== BOOK STRUCTURE ====================
+// ============================================================
+// BOOK STRUCTURE
+// ============================================================
 
 struct Book {
     int id;
@@ -26,7 +29,9 @@ struct Book {
     string memberId;
 };
 
-// ==================== BST ====================
+// ============================================================
+// BST
+// ============================================================
 
 struct BSTNode {
     Book book;
@@ -67,7 +72,8 @@ private:
     }
 
     void inorder(BSTNode* node, vector<Book>& books) {
-        if (!node) return;
+        if (!node)
+            return;
 
         inorder(node->left, books);
         books.push_back(node->book);
@@ -94,6 +100,7 @@ private:
             node->right = deleteNode(node->right, id);
         }
         else {
+
             if (!node->left) {
                 BSTNode* temp = node->right;
                 delete node;
@@ -107,14 +114,18 @@ private:
             }
 
             BSTNode* temp = minNode(node->right);
+
             node->book = temp->book;
-            node->right = deleteNode(node->right, temp->book.id);
+
+            node->right =
+                deleteNode(node->right, temp->book.id);
         }
 
         return node;
     }
 
 public:
+
     void insert(Book book) {
         root = insertNode(root, book);
     }
@@ -139,10 +150,14 @@ public:
     }
 };
 
-// ==================== HASH TABLE ====================
+// ============================================================
+// HASH TABLE
+// ============================================================
 
 class HashTable {
+
 private:
+
     static const int SIZE = 101;
 
     struct Entry {
@@ -160,16 +175,24 @@ private:
     Entry* table[SIZE]{};
 
     int hashFunction(int id) {
-        return id % SIZE;
+        int index = id % SIZE;
+
+        if (index < 0)
+            index += SIZE;
+
+        return index;
     }
 
 public:
+
     void insert(Book book) {
+
         int index = hashFunction(book.id);
 
         Entry* current = table[index];
 
         while (current) {
+
             if (current->id == book.id) {
                 current->book = book;
                 return;
@@ -178,18 +201,22 @@ public:
             current = current->next;
         }
 
-        Entry* newEntry = new Entry(book.id, book);
+        Entry* newEntry =
+            new Entry(book.id, book);
 
         newEntry->next = table[index];
+
         table[index] = newEntry;
     }
 
     Book* search(int id) {
+
         int index = hashFunction(id);
 
         Entry* current = table[index];
 
         while (current) {
+
             if (current->id == id)
                 return &current->book;
 
@@ -200,12 +227,14 @@ public:
     }
 
     void remove(int id) {
+
         int index = hashFunction(id);
 
         Entry* current = table[index];
         Entry* previous = nullptr;
 
         while (current) {
+
             if (current->id == id) {
 
                 if (previous)
@@ -214,6 +243,7 @@ public:
                     table[index] = current->next;
 
                 delete current;
+
                 return;
             }
 
@@ -223,12 +253,16 @@ public:
     }
 };
 
-// ==================== GLOBAL DATA ====================
+// ============================================================
+// GLOBAL DATA
+// ============================================================
 
 BST bst;
 HashTable hashTable;
 
-// ==================== FILE STORAGE ====================
+// ============================================================
+// FILE STORAGE
+// ============================================================
 
 void saveBooks() {
 
@@ -243,7 +277,8 @@ void saveBooks() {
              << b.author << "|"
              << b.category << "|"
              << b.issued << "|"
-             << b.memberId << "\n";
+             << b.memberId
+             << "\n";
     }
 
     file.close();
@@ -302,30 +337,45 @@ void loadBooks() {
     file.close();
 }
 
-// ==================== URL DECODE ====================
+// ============================================================
+// URL DECODE
+// ============================================================
 
-string urlDecode(string value) {
+string urlDecode(const string& value) {
 
     string result;
 
     for (size_t i = 0; i < value.length(); i++) {
 
         if (value[i] == '+') {
+
             result += ' ';
         }
-        else if (value[i] == '%' && i + 2 < value.length()) {
 
-            string hex = value.substr(i + 1, 2);
+        else if (
+            value[i] == '%' &&
+            i + 2 < value.length()
+        ) {
 
-            char ch = static_cast<char>(
-                strtol(hex.c_str(), nullptr, 16)
-            );
+            string hex =
+                value.substr(i + 1, 2);
+
+            char ch =
+                static_cast<char>(
+                    strtol(
+                        hex.c_str(),
+                        nullptr,
+                        16
+                    )
+                );
 
             result += ch;
 
             i += 2;
         }
+
         else {
+
             result += value[i];
         }
     }
@@ -333,30 +383,44 @@ string urlDecode(string value) {
     return result;
 }
 
-// ==================== FORM VALUE ====================
+// ============================================================
+// FORM VALUE
+// ============================================================
 
-string getValue(string body, string key) {
+string getValue(
+    const string& body,
+    const string& key
+) {
 
     string searchKey = key + "=";
 
-    size_t start = body.find(searchKey);
+    size_t start =
+        body.find(searchKey);
 
     if (start == string::npos)
         return "";
 
     start += searchKey.length();
 
-    size_t end = body.find('&', start);
+    size_t end =
+        body.find('&', start);
 
     if (end == string::npos)
         end = body.length();
 
-    return urlDecode(body.substr(start, end - start));
+    return urlDecode(
+        body.substr(
+            start,
+            end - start
+        )
+    );
 }
 
-// ==================== JSON ESCAPE ====================
+// ============================================================
+// JSON ESCAPE
+// ============================================================
 
-string jsonEscape(string value) {
+string jsonEscape(const string& value) {
 
     string result;
 
@@ -371,6 +435,9 @@ string jsonEscape(string value) {
         else if (c == '\n')
             result += "\\n";
 
+        else if (c == '\r')
+            result += "\\r";
+
         else
             result += c;
     }
@@ -378,43 +445,125 @@ string jsonEscape(string value) {
     return result;
 }
 
-// ==================== BOOK JSON ====================
+// ============================================================
+// BOOK TO JSON
+// ============================================================
 
-string bookToJson(Book b) {
+string bookToJson(const Book& b) {
 
     string json = "{";
 
-    json += "\"id\":" + to_string(b.id) + ",";
-    json += "\"title\":\"" + jsonEscape(b.title) + "\",";
-    json += "\"author\":\"" + jsonEscape(b.author) + "\",";
-    json += "\"category\":\"" + jsonEscape(b.category) + "\",";
-    json += "\"issued\":" + string(b.issued ? "true" : "false") + ",";
-    json += "\"memberId\":\"" + jsonEscape(b.memberId) + "\"";
+    json += "\"id\":" +
+            to_string(b.id) + ",";
+
+    json += "\"title\":\"" +
+            jsonEscape(b.title) + "\",";
+
+    json += "\"author\":\"" +
+            jsonEscape(b.author) + "\",";
+
+    json += "\"category\":\"" +
+            jsonEscape(b.category) + "\",";
+
+    json += "\"issued\":" +
+            string(
+                b.issued
+                ? "true"
+                : "false"
+            ) + ",";
+
+    json += "\"memberId\":\"" +
+            jsonEscape(b.memberId) +
+            "\"";
 
     json += "}";
 
     return json;
 }
 
-// ==================== HTTP RESPONSE ====================
+// ============================================================
+// HTTP RESPONSE
+// ============================================================
 
 void sendResponse(
     int client,
     const string& body,
-    const string& contentType = "text/html; charset=UTF-8"
+    const string& contentType =
+        "text/html; charset=UTF-8"
 ) {
+
     string response =
         "HTTP/1.1 200 OK\r\n"
-        "Content-Type: " + contentType + "\r\n"
-        "Content-Length: " + to_string(body.size()) + "\r\n"
+        "Content-Type: " +
+        contentType +
+        "\r\n"
+        "Content-Length: " +
+        to_string(body.size()) +
+        "\r\n"
         "Connection: close\r\n"
         "\r\n" +
         body;
 
-    send(client, response.c_str(), response.size(), 0);
+    send(
+        client,
+        response.c_str(),
+        response.size(),
+        0
+    );
 }
 
-// ==================== HTTP SERVER ====================
+// ============================================================
+// GET BOOKS JSON
+// ============================================================
+
+void getAllBooks(int client) {
+
+    vector<Book> books =
+        bst.getAll();
+
+    string json = "[";
+
+    for (size_t i = 0;
+         i < books.size();
+         i++) {
+
+        if (i > 0)
+            json += ",";
+
+        json += bookToJson(books[i]);
+    }
+
+    json += "]";
+
+    sendResponse(
+        client,
+        json,
+        "application/json; charset=UTF-8"
+    );
+}
+
+// ============================================================
+// REQUEST BODY READER
+// ============================================================
+
+string getRequestBody(
+    const string& request
+) {
+
+    size_t headerEnd =
+        request.find("\r\n\r\n");
+
+    if (headerEnd == string::npos)
+        return "";
+
+    return request.substr(
+        headerEnd + 4
+    );
+}
+
+// ============================================================
+// HTTP SERVER
+// ============================================================
 
 void handleRequest(int client) {
 
@@ -424,92 +573,212 @@ void handleRequest(int client) {
 
     int received;
 
-    while ((received = recv(client, buffer, sizeof(buffer), 0)) > 0) {
+    while (
+        (received =
+            recv(
+                client,
+                buffer,
+                sizeof(buffer),
+                0
+            )) > 0
+    ) {
 
-        request.append(buffer, received);
+        request.append(
+            buffer,
+            received
+        );
 
-        if (received < (int)sizeof(buffer))
+        if (
+            request.find(
+                "\r\n\r\n"
+            ) != string::npos
+        ) {
+
+            size_t headerEnd =
+                request.find(
+                    "\r\n\r\n"
+                );
+
+            string headers =
+                request.substr(
+                    0,
+                    headerEnd
+                );
+
+            size_t contentLengthPos =
+                headers.find(
+                    "Content-Length:"
+                );
+
+            if (
+                contentLengthPos ==
+                string::npos
+            ) {
+                break;
+            }
+
+            size_t lineEnd =
+                headers.find(
+                    "\r\n",
+                    contentLengthPos
+                );
+
+            string lengthText =
+                headers.substr(
+                    contentLengthPos +
+                    15,
+                    lineEnd -
+                    (
+                        contentLengthPos +
+                        15
+                    )
+                );
+
+            int contentLength =
+                atoi(
+                    lengthText.c_str()
+                );
+
+            size_t bodyStart =
+                headerEnd + 4;
+
+            if (
+                request.size() >=
+                bodyStart +
+                contentLength
+            ) {
+                break;
+            }
+        }
+
+        if (
+            received <
+            (int)sizeof(buffer)
+        ) {
             break;
+        }
     }
 
     if (request.empty())
         return;
 
-    size_t firstLineEnd = request.find("\r\n");
+    // ========================================================
+    // REQUEST LINE
+    // ========================================================
 
-    if (firstLineEnd == string::npos)
+    size_t firstLineEnd =
+        request.find("\r\n");
+
+    if (
+        firstLineEnd ==
+        string::npos
+    )
         return;
 
     string requestLine =
-        request.substr(0, firstLineEnd);
+        request.substr(
+            0,
+            firstLineEnd
+        );
 
-    stringstream requestStream(requestLine);
+    stringstream requestStream(
+        requestLine
+    );
 
     string method;
     string path;
     string version;
 
-    requestStream >> method >> path >> version;
+    requestStream
+        >> method
+        >> path
+        >> version;
 
-    // ==================== GET ====================
+    // ========================================================
+    // REMOVE QUERY FROM PATH
+    // ========================================================
+
+    string cleanPath = path;
+
+    size_t queryPos =
+        cleanPath.find('?');
+
+    if (
+        queryPos !=
+        string::npos
+    ) {
+        cleanPath =
+            cleanPath.substr(
+                0,
+                queryPos
+            );
+    }
+
+    // ========================================================
+    // GET
+    // ========================================================
 
     if (method == "GET") {
 
-        // ---------- GET BOOKS ----------
+        // ----------------------------------------------------
+        // GET ALL BOOKS
+        // ----------------------------------------------------
 
-        if (path == "/api/books") {
+        if (
+            cleanPath ==
+            "/api/books"
+        ) {
 
-            vector<Book> books = bst.getAll();
-
-            string json = "[";
-
-            for (size_t i = 0; i < books.size(); i++) {
-
-                if (i > 0)
-                    json += ",";
-
-                json += bookToJson(books[i]);
-            }
-
-            json += "]";
-
-            sendResponse(
-                client,
-                json,
-                "application/json"
-            );
+            getAllBooks(client);
 
             return;
         }
 
-        // ---------- SEARCH BOOK ----------
+        // ----------------------------------------------------
+        // SEARCH BOOK
+        // GET /api/books/101
+        // ----------------------------------------------------
 
-        if (path.rfind("/api/search?id=", 0) == 0) {
+        if (
+            cleanPath.rfind(
+                "/api/books/",
+                0
+            ) == 0
+        ) {
 
             string idText =
-                path.substr(string("/api/search?id=").length());
+                cleanPath.substr(
+                    string(
+                        "/api/books/"
+                    ).length()
+                );
 
             try {
 
-                int id = stoi(idText);
+                int id =
+                    stoi(idText);
 
-                Book* book = hashTable.search(id);
+                Book* book =
+                    hashTable.search(id);
 
                 if (!book) {
 
                     sendResponse(
                         client,
-                        "{\"error\":\"Book not found\"}",
-                        "application/json"
+                        "{\"success\":false,\"message\":\"Book not found\"}",
+                        "application/json; charset=UTF-8"
                     );
 
                     return;
                 }
 
+                string json =
+                    bookToJson(*book);
+
                 sendResponse(
                     client,
-                    bookToJson(*book),
-                    "application/json"
+                    json,
+                    "application/json; charset=UTF-8"
                 );
 
             }
@@ -517,32 +786,64 @@ void handleRequest(int client) {
 
                 sendResponse(
                     client,
-                    "{\"error\":\"Invalid ID\"}",
-                    "application/json"
+                    "{\"success\":false,\"message\":\"Invalid Book ID\"}",
+                    "application/json; charset=UTF-8"
                 );
             }
 
             return;
         }
 
-        // ---------- STATIC FILES ----------
+        // ----------------------------------------------------
+        // STATIC FILES
+        // ----------------------------------------------------
 
         string filePath;
 
-        if (path == "/" || path == "/index.html")
-            filePath = "public/index.html";
+        string contentType;
 
-        else if (path == "/style.css")
-            filePath = "public/style.css";
+        if (
+            cleanPath == "/" ||
+            cleanPath == "/index.html"
+        ) {
 
-        else if (path == "/app.js")
-            filePath = "public/app.js";
+            filePath =
+                "public/index.html";
+
+            contentType =
+                "text/html; charset=UTF-8";
+        }
+
+        else if (
+            cleanPath ==
+            "/style.css"
+        ) {
+
+            filePath =
+                "public/style.css";
+
+            contentType =
+                "text/css; charset=UTF-8";
+        }
+
+        else if (
+            cleanPath ==
+            "/app.js"
+        ) {
+
+            filePath =
+                "public/app.js";
+
+            contentType =
+                "application/javascript; charset=UTF-8";
+        }
 
         else {
 
             sendResponse(
                 client,
-                "404 Not Found"
+                "404 Not Found",
+                "text/plain; charset=UTF-8"
             );
 
             return;
@@ -554,7 +855,8 @@ void handleRequest(int client) {
 
             sendResponse(
                 client,
-                "File not found"
+                "File not found",
+                "text/plain; charset=UTF-8"
             );
 
             return;
@@ -564,72 +866,102 @@ void handleRequest(int client) {
 
         contents << file.rdbuf();
 
-        string contentType;
-
-if (path == "/" || path == "/index.html")
-    contentType = "text/html; charset=UTF-8";
-
-else if (path == "/style.css")
-    contentType = "text/css; charset=UTF-8";
-
-else if (path == "/app.js")
-    contentType = "application/javascript; charset=UTF-8";
-
-else
-    contentType = "text/plain; charset=UTF-8";
-
-sendResponse(client, contents.str(), contentType);
+        sendResponse(
+            client,
+            contents.str(),
+            contentType
+        );
 
         return;
     }
 
-    // ==================== POST ====================
+    // ========================================================
+    // POST
+    // ========================================================
 
     if (method == "POST") {
 
-        size_t headerEnd = request.find("\r\n\r\n");
-
-        if (headerEnd == string::npos)
-            return;
-
         string body =
-            request.substr(headerEnd + 4);
+            getRequestBody(request);
 
-        // ---------- ADD BOOK ----------
+        // ----------------------------------------------------
+        // ADD BOOK
+        // POST /api/books
+        // ----------------------------------------------------
 
-        if (path == "/api/add") {
+        if (
+            cleanPath ==
+            "/api/books"
+        ) {
 
             try {
+
+                string idText =
+                    getValue(body, "id");
+
+                string title =
+                    getValue(body, "title");
+
+                string author =
+                    getValue(body, "author");
+
+                string category =
+                    getValue(body, "category");
+
+                if (
+                    idText.empty() ||
+                    title.empty() ||
+                    author.empty()
+                ) {
+
+                    sendResponse(
+                        client,
+                        "{\"success\":false,\"message\":\"Please fill all required fields\"}",
+                        "application/json; charset=UTF-8"
+                    );
+
+                    return;
+                }
 
                 Book book;
 
                 book.id =
-                    stoi(getValue(body, "id"));
+                    stoi(idText);
 
                 book.title =
-                    getValue(body, "title");
+                    title;
 
                 book.author =
-                    getValue(body, "author");
+                    author;
 
                 book.category =
-                    getValue(body, "category");
+                    category.empty()
+                    ? "General"
+                    : category;
 
                 book.issued = false;
+
                 book.memberId = "";
 
-                if (hashTable.search(book.id)) {
+                // Check duplicate
+
+                if (
+                    hashTable.search(
+                        book.id
+                    )
+                ) {
 
                     sendResponse(
                         client,
                         "{\"success\":false,\"message\":\"Book ID already exists\"}",
-                        "application/json"
+                        "application/json; charset=UTF-8"
                     );
 
                     return;
                 }
 
                 bst.insert(book);
+
                 hashTable.insert(book);
 
                 saveBooks();
@@ -637,7 +969,7 @@ sendResponse(client, contents.str(), contentType);
                 sendResponse(
                     client,
                     "{\"success\":true,\"message\":\"Book added successfully\"}",
-                    "application/json"
+                    "application/json; charset=UTF-8"
                 );
 
             }
@@ -646,64 +978,111 @@ sendResponse(client, contents.str(), contentType);
                 sendResponse(
                     client,
                     "{\"success\":false,\"message\":\"Invalid book data\"}",
-                    "application/json"
+                    "application/json; charset=UTF-8"
                 );
             }
 
             return;
         }
 
-        // ---------- ISSUE BOOK ----------
+        // ----------------------------------------------------
+        // ISSUE BOOK
+        // POST /api/issue/101
+        // body: memberId=555
+        // ----------------------------------------------------
 
-        if (path == "/api/issue") {
+        if (
+            cleanPath.rfind(
+                "/api/issue/",
+                0
+            ) == 0
+        ) {
+
+            string idText =
+                cleanPath.substr(
+                    string(
+                        "/api/issue/"
+                    ).length()
+                );
 
             try {
 
                 int id =
-                    stoi(getValue(body, "id"));
+                    stoi(idText);
 
                 string memberId =
-                    getValue(body, "memberId");
+                    getValue(
+                        body,
+                        "memberId"
+                    );
 
-                Book* book =
+                if (memberId.empty()) {
+
+                    sendResponse(
+                        client,
+                        "{\"success\":false,\"message\":\"Member ID is required\"}",
+                        "application/json; charset=UTF-8"
+                    );
+
+                    return;
+                }
+
+                Book* hashBook =
                     hashTable.search(id);
 
-                if (!book) {
+                if (!hashBook) {
 
                     sendResponse(
                         client,
                         "{\"success\":false,\"message\":\"Book not found\"}",
-                        "application/json"
+                        "application/json; charset=UTF-8"
                     );
 
                     return;
                 }
 
-                if (book->issued) {
+                if (hashBook->issued) {
 
                     sendResponse(
                         client,
                         "{\"success\":false,\"message\":\"Book already issued\"}",
-                        "application/json"
+                        "application/json; charset=UTF-8"
                     );
 
                     return;
                 }
 
-                book->issued = true;
-                book->memberId = memberId;
+                // Create updated book copy
+
+                Book updatedBook =
+                    *hashBook;
+
+                updatedBook.issued =
+                    true;
+
+                updatedBook.memberId =
+                    memberId;
+
+                // Update BST
 
                 bst.remove(id);
-                bst.insert(*book);
 
-                hashTable.insert(*book);
+                bst.insert(
+                    updatedBook
+                );
+
+                // Update Hash Table
+
+                hashTable.insert(
+                    updatedBook
+                );
 
                 saveBooks();
 
                 sendResponse(
                     client,
                     "{\"success\":true,\"message\":\"Book issued successfully\"}",
-                    "application/json"
+                    "application/json; charset=UTF-8"
                 );
 
             }
@@ -712,50 +1091,91 @@ sendResponse(client, contents.str(), contentType);
                 sendResponse(
                     client,
                     "{\"success\":false,\"message\":\"Invalid request\"}",
-                    "application/json"
+                    "application/json; charset=UTF-8"
                 );
             }
 
             return;
         }
 
-        // ---------- RETURN BOOK ----------
+        // ----------------------------------------------------
+        // RETURN BOOK
+        // POST /api/return/101
+        // ----------------------------------------------------
 
-        if (path == "/api/return") {
+        if (
+            cleanPath.rfind(
+                "/api/return/",
+                0
+            ) == 0
+        ) {
+
+            string idText =
+                cleanPath.substr(
+                    string(
+                        "/api/return/"
+                    ).length()
+                );
 
             try {
 
                 int id =
-                    stoi(getValue(body, "id"));
+                    stoi(idText);
 
-                Book* book =
+                Book* hashBook =
                     hashTable.search(id);
 
-                if (!book) {
+                if (!hashBook) {
 
                     sendResponse(
                         client,
                         "{\"success\":false,\"message\":\"Book not found\"}",
-                        "application/json"
+                        "application/json; charset=UTF-8"
                     );
 
                     return;
                 }
 
-                book->issued = false;
-                book->memberId = "";
+                if (!hashBook->issued) {
+
+                    sendResponse(
+                        client,
+                        "{\"success\":false,\"message\":\"Book is already available\"}",
+                        "application/json; charset=UTF-8"
+                    );
+
+                    return;
+                }
+
+                Book updatedBook =
+                    *hashBook;
+
+                updatedBook.issued =
+                    false;
+
+                updatedBook.memberId =
+                    "";
+
+                // Update BST
 
                 bst.remove(id);
-                bst.insert(*book);
 
-                hashTable.insert(*book);
+                bst.insert(
+                    updatedBook
+                );
+
+                // Update Hash Table
+
+                hashTable.insert(
+                    updatedBook
+                );
 
                 saveBooks();
 
                 sendResponse(
                     client,
                     "{\"success\":true,\"message\":\"Book returned successfully\"}",
-                    "application/json"
+                    "application/json; charset=UTF-8"
                 );
 
             }
@@ -764,54 +1184,7 @@ sendResponse(client, contents.str(), contentType);
                 sendResponse(
                     client,
                     "{\"success\":false,\"message\":\"Invalid request\"}",
-                    "application/json"
-                );
-            }
-
-            return;
-        }
-
-        // ---------- DELETE BOOK ----------
-
-        if (path == "/api/delete") {
-
-            try {
-
-                int id =
-                    stoi(getValue(body, "id"));
-
-                Book* book =
-                    hashTable.search(id);
-
-                if (!book) {
-
-                    sendResponse(
-                        client,
-                        "{\"success\":false,\"message\":\"Book not found\"}",
-                        "application/json"
-                    );
-
-                    return;
-                }
-
-                bst.remove(id);
-                hashTable.remove(id);
-
-                saveBooks();
-
-                sendResponse(
-                    client,
-                    "{\"success\":true,\"message\":\"Book deleted successfully\"}",
-                    "application/json"
-                );
-
-            }
-            catch (...) {
-
-                sendResponse(
-                    client,
-                    "{\"success\":false,\"message\":\"Invalid request\"}",
-                    "application/json"
+                    "application/json; charset=UTF-8"
                 );
             }
 
@@ -819,13 +1192,86 @@ sendResponse(client, contents.str(), contentType);
         }
     }
 
+    // ========================================================
+    // DELETE
+    // DELETE /api/books/101
+    // ========================================================
+
+    if (method == "DELETE") {
+
+        if (
+            cleanPath.rfind(
+                "/api/books/",
+                0
+            ) == 0
+        ) {
+
+            string idText =
+                cleanPath.substr(
+                    string(
+                        "/api/books/"
+                    ).length()
+                );
+
+            try {
+
+                int id =
+                    stoi(idText);
+
+                Book* book =
+                    hashTable.search(id);
+
+                if (!book) {
+
+                    sendResponse(
+                        client,
+                        "{\"success\":false,\"message\":\"Book not found\"}",
+                        "application/json; charset=UTF-8"
+                    );
+
+                    return;
+                }
+
+                bst.remove(id);
+
+                hashTable.remove(id);
+
+                saveBooks();
+
+                sendResponse(
+                    client,
+                    "{\"success\":true,\"message\":\"Book deleted successfully\"}",
+                    "application/json; charset=UTF-8"
+                );
+
+            }
+            catch (...) {
+
+                sendResponse(
+                    client,
+                    "{\"success\":false,\"message\":\"Invalid Book ID\"}",
+                    "application/json; charset=UTF-8"
+                );
+            }
+
+            return;
+        }
+    }
+
+    // ========================================================
+    // 404
+    // ========================================================
+
     sendResponse(
         client,
-        "404 Not Found"
+        "404 Not Found",
+        "text/plain; charset=UTF-8"
     );
 }
 
-// ==================== MAIN ====================
+// ============================================================
+// MAIN
+// ============================================================
 
 int main() {
 
@@ -840,11 +1286,16 @@ int main() {
         port = atoi(envPort);
 
     int serverSocket =
-        socket(AF_INET, SOCK_STREAM, 0);
+        socket(
+            AF_INET,
+            SOCK_STREAM,
+            0
+        );
 
     if (serverSocket < 0) {
 
-        cerr << "Socket creation failed\n";
+        cerr
+            << "Socket creation failed\n";
 
         return 1;
     }
@@ -870,30 +1321,41 @@ int main() {
     serverAddress.sin_port =
         htons(port);
 
-    if (bind(
-        serverSocket,
-        (sockaddr*)&serverAddress,
-        sizeof(serverAddress)
-    ) < 0) {
+    if (
+        bind(
+            serverSocket,
+            (sockaddr*)&serverAddress,
+            sizeof(serverAddress)
+        ) < 0
+    ) {
 
-        cerr << "Bind failed\n";
-
-        close(serverSocket);
-
-        return 1;
-    }
-
-    if (listen(serverSocket, 10) < 0) {
-
-        cerr << "Listen failed\n";
+        cerr
+            << "Bind failed\n";
 
         close(serverSocket);
 
         return 1;
     }
 
-    cout << "Library Management Server running on port "
-         << port << endl;
+    if (
+        listen(
+            serverSocket,
+            10
+        ) < 0
+    ) {
+
+        cerr
+            << "Listen failed\n";
+
+        close(serverSocket);
+
+        return 1;
+    }
+
+    cout
+        << "Library Management Server running on port "
+        << port
+        << endl;
 
     while (true) {
 
@@ -912,12 +1374,19 @@ int main() {
         if (clientSocket < 0)
             continue;
 
-        handleRequest(clientSocket);
+        handleRequest(
+            clientSocket
+        );
 
-        close(clientSocket);
+        close(
+            clientSocket
+        );
     }
 
-    close(serverSocket);
+    close(
+        serverSocket
+    );
 
     return 0;
 }
+```
