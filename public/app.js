@@ -1,169 +1,29 @@
-javascript
-const $ = id => document.getElementById(id);
+const $ = id =>
+    document.getElementById(id);
+
 
 // ============================================================
 // MESSAGE
 // ============================================================
 
 function showMessage(text, ok = true) {
-    $("message").innerHTML =
-        `<div class="${ok ? "ok" : "err"}">${escapeHtml(text)}</div>`;
+
+    const message = $("message");
+
+    if (!message) {
+        return;
+    }
+
+    message.innerHTML =
+        `<div class="${ok ? "ok" : "err"}">
+            ${escapeHtml(text)}
+        </div>`;
 
     setTimeout(() => {
-        $("message").innerHTML = "";
+        message.innerHTML = "";
     }, 3000);
 }
 
-// ============================================================
-// LOAD ALL BOOKS
-// ============================================================
-
-async function loadBooks() {
-
-    try {
-
-        const res =
-            await fetch("/api/books");
-
-        const books =
-            await res.json();
-
-        renderBooks(books);
-
-    }
-    catch (error) {
-
-        console.error(error);
-
-        showMessage(
-            "Unable to load books",
-            false
-        );
-    }
-}
-
-// ============================================================
-// RENDER BOOKS
-// ============================================================
-
-function renderBooks(books) {
-
-    $("total").textContent =
-        books.length;
-
-    $("available").textContent =
-        books.filter(
-            b => !b.issued
-        ).length;
-
-    $("issued").textContent =
-        books.filter(
-            b => b.issued
-        ).length;
-
-    $("bookRows").innerHTML =
-        books.length
-
-        ? books.map(b => `
-
-            <tr>
-
-                <td>
-                    <b>${b.id}</b>
-                </td>
-
-                <td>
-                    ${escapeHtml(b.title)}
-                </td>
-
-                <td>
-                    ${escapeHtml(b.author)}
-                </td>
-
-                <td>
-                    ${escapeHtml(
-                        b.category || "General"
-                    )}
-                </td>
-
-                <td>
-
-                    <span class="badge ${
-                        b.issued
-                            ? "issued"
-                            : "available"
-                    }">
-
-                        ${
-                            b.issued
-                                ? "Issued"
-                                : "Available"
-                        }
-
-                    </span>
-
-                    ${
-                        b.issued && b.memberId
-                            ? `<small>Member: ${escapeHtml(b.memberId)}</small>`
-                            : ""
-                    }
-
-                </td>
-
-                <td class="actions">
-
-                    ${
-                        b.issued
-
-                        ? `
-                            <button
-                                class="return"
-                                onclick="returnBook(${b.id})"
-                            >
-                                Return
-                            </button>
-                          `
-
-                        : `
-                            <button
-                                onclick="issueBook(${b.id})"
-                            >
-                                Issue
-                            </button>
-                          `
-                    }
-
-                    <button
-                        class="danger"
-                        onclick="deleteBook(${b.id})"
-                    >
-                        Delete
-                    </button>
-
-                </td>
-
-            </tr>
-
-        `).join("")
-
-        : `
-            <tr>
-
-                <td
-                    colspan="6"
-                    style="
-                        text-align:center;
-                        padding:30px;
-                        color:#777
-                    "
-                >
-                    No books found.
-                    Add your first book.
-                </td>
-
-            </tr>
-          `;
-}
 
 // ============================================================
 // ESCAPE HTML
@@ -184,6 +44,195 @@ function escapeHtml(value) {
         );
 }
 
+
+// ============================================================
+// LOAD BOOKS
+// ============================================================
+
+async function loadBooks() {
+
+    try {
+
+        const response =
+            await fetch("/api/books");
+
+        if (!response.ok) {
+            throw new Error(
+                "HTTP " + response.status
+            );
+        }
+
+        const books =
+            await response.json();
+
+        renderBooks(books);
+
+    }
+    catch (error) {
+
+        console.error(
+            "LOAD BOOKS ERROR:",
+            error
+        );
+
+        showMessage(
+            "Unable to load books",
+            false
+        );
+    }
+}
+
+
+// ============================================================
+// RENDER BOOKS
+// ============================================================
+
+function renderBooks(books) {
+
+    $("total").textContent =
+        books.length;
+
+    $("available").textContent =
+        books.filter(
+            book => !book.issued
+        ).length;
+
+    $("issued").textContent =
+        books.filter(
+            book => book.issued
+        ).length;
+
+
+    $("bookRows").innerHTML =
+        books.length
+
+            ? books.map(book => `
+
+                <tr>
+
+                    <td>
+                        <b>${book.id}</b>
+                    </td>
+
+                    <td>
+                        ${escapeHtml(book.title)}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(book.author)}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(
+                            book.category ||
+                            "General"
+                        )}
+                    </td>
+
+                    <td>
+
+                        <span class="badge ${
+                            book.issued
+                                ? "issued"
+                                : "available"
+                        }">
+
+                            ${
+                                book.issued
+                                    ? "Issued"
+                                    : "Available"
+                            }
+
+                        </span>
+
+                        ${
+                            book.issued &&
+                            book.memberId
+                                ? `
+                                    <br>
+                                    <small>
+                                        Member:
+                                        ${escapeHtml(
+                                            book.memberId
+                                        )}
+                                    </small>
+                                  `
+                                : ""
+                        }
+
+                    </td>
+
+                    <td class="actions">
+
+                        ${
+                            book.issued
+
+                                ? `
+                                    <button
+                                        class="return"
+                                        onclick="
+                                            returnBook(
+                                                ${book.id}
+                                            )
+                                        "
+                                    >
+                                        Return
+                                    </button>
+                                  `
+
+                                : `
+                                    <button
+                                        onclick="
+                                            issueBook(
+                                                ${book.id}
+                                            )
+                                        "
+                                    >
+                                        Issue
+                                    </button>
+                                  `
+                        }
+
+
+                        <button
+                            class="danger"
+                            onclick="
+                                deleteBook(
+                                    ${book.id}
+                                )
+                            "
+                        >
+                            Delete
+                        </button>
+
+                    </td>
+
+                </tr>
+
+            `).join("")
+
+            : `
+
+                <tr>
+
+                    <td
+                        colspan="6"
+                        style="
+                            text-align:center;
+                            padding:30px;
+                            color:#777;
+                        "
+                    >
+                        No books found.
+                        Add your first book.
+                    </td>
+
+                </tr>
+
+            `;
+}
+
+
 // ============================================================
 // MODAL
 // ============================================================
@@ -192,7 +241,19 @@ function openAdd() {
 
     $("modal").style.display =
         "flex";
+
+    setTimeout(() => {
+
+        const idInput =
+            $("bookId");
+
+        if (idInput) {
+            idInput.focus();
+        }
+
+    }, 100);
 }
+
 
 function closeModal() {
 
@@ -200,107 +261,221 @@ function closeModal() {
         "none";
 }
 
+
 // ============================================================
 // ADD BOOK
 // POST /api/books
 // ============================================================
 
-$("bookForm").addEventListener(
-    "submit",
-    async e => {
+const bookForm =
+    $("bookForm");
 
-        e.preventDefault();
 
-        try {
+if (bookForm) {
 
-            const body =
-                new URLSearchParams(
-                    new FormData(e.target)
+    bookForm.addEventListener(
+        "submit",
+        async event => {
+
+            event.preventDefault();
+
+
+            try {
+
+                // Get values directly
+                const id =
+                    $("bookId").value.trim();
+
+                const title =
+                    $("bookTitle").value.trim();
+
+                const author =
+                    $("bookAuthor").value.trim();
+
+                const category =
+                    $("bookCategory").value.trim();
+
+
+                // Basic validation
+                if (!id) {
+
+                    showMessage(
+                        "Please enter Book ID.",
+                        false
+                    );
+
+                    return;
+                }
+
+
+                if (!title) {
+
+                    showMessage(
+                        "Please enter Book Title.",
+                        false
+                    );
+
+                    return;
+                }
+
+
+                if (!author) {
+
+                    showMessage(
+                        "Please enter Author.",
+                        false
+                    );
+
+                    return;
+                }
+
+
+                // Create request body
+                const body =
+                    new URLSearchParams();
+
+                body.append(
+                    "id",
+                    id
                 );
 
-            const res =
-                await fetch(
-                    "/api/books",
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type":
-                                "application/x-www-form-urlencoded"
-                        },
-                        body: body
-                    }
+                body.append(
+                    "title",
+                    title
                 );
 
-            const data =
-                await res.json();
+                body.append(
+                    "author",
+                    author
+                );
 
-            showMessage(
-                data.message,
-                data.success
-            );
+                body.append(
+                    "category",
+                    category || "General"
+                );
 
-            if (data.success) {
 
-                e.target.reset();
+                console.log(
+                    "ADD BOOK REQUEST:",
+                    body.toString()
+                );
 
-                closeModal();
 
-                await loadBooks();
+                // Send to C++ server
+                const response =
+                    await fetch(
+                        "/api/books",
+                        {
+                            method: "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/x-www-form-urlencoded"
+                            },
+
+                            body:
+                                body.toString()
+                        }
+                    );
+
+
+                const data =
+                    await response.json();
+
+
+                console.log(
+                    "ADD BOOK RESPONSE:",
+                    data
+                );
+
+
+                showMessage(
+                    data.message ||
+                    "Operation completed",
+                    data.success === true
+                );
+
+
+                if (
+                    data.success === true
+                ) {
+
+                    bookForm.reset();
+
+                    closeModal();
+
+                    await loadBooks();
+                }
+
+            }
+            catch (error) {
+
+                console.error(
+                    "ADD BOOK ERROR:",
+                    error
+                );
+
+                showMessage(
+                    "Add book failed. Check browser console.",
+                    false
+                );
             }
 
         }
-        catch (error) {
+    );
 
-            console.error(error);
+}
 
-            showMessage(
-                "Add book failed",
-                false
-            );
-        }
-    }
-);
 
 // ============================================================
 // SEARCH BOOK
-// GET /api/books/:id
 // ============================================================
 
 async function searchBook() {
 
+    const input =
+        $("search");
+
     const id =
-        $("search").value.trim();
+        input.value.trim();
+
 
     if (!id) {
 
-        loadBooks();
+        await loadBooks();
 
         return;
     }
 
+
     try {
 
-        const res =
+        const response =
             await fetch(
                 `/api/books/${encodeURIComponent(id)}`
             );
 
-        const data =
-            await res.json();
 
-        if (data.success === false) {
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
 
             renderBooks([]);
 
             showMessage(
-                data.message,
+                data.message ||
+                "Book not found",
                 false
             );
 
             return;
         }
 
+
         renderBooks([data]);
+
 
         showMessage(
             "Book found using Hash Table."
@@ -309,7 +484,10 @@ async function searchBook() {
     }
     catch (error) {
 
-        console.error(error);
+        console.error(
+            "SEARCH ERROR:",
+            error
+        );
 
         showMessage(
             "Search failed",
@@ -318,9 +496,9 @@ async function searchBook() {
     }
 }
 
+
 // ============================================================
 // DELETE BOOK
-// DELETE /api/books/:id
 // ============================================================
 
 async function deleteBook(id) {
@@ -331,12 +509,14 @@ async function deleteBook(id) {
             id +
             "?"
         )
-    )
+    ) {
         return;
+    }
+
 
     try {
 
-        const res =
+        const response =
             await fetch(
                 `/api/books/${id}`,
                 {
@@ -344,21 +524,29 @@ async function deleteBook(id) {
                 }
             );
 
+
         const data =
-            await res.json();
+            await response.json();
+
 
         showMessage(
             data.message,
             data.success
         );
 
-        if (data.success)
+
+        if (data.success) {
+
             await loadBooks();
+        }
 
     }
     catch (error) {
 
-        console.error(error);
+        console.error(
+            "DELETE ERROR:",
+            error
+        );
 
         showMessage(
             "Delete failed",
@@ -367,9 +555,9 @@ async function deleteBook(id) {
     }
 }
 
+
 // ============================================================
 // ISSUE BOOK
-// POST /api/issue/:id
 // ============================================================
 
 async function issueBook(id) {
@@ -379,44 +567,62 @@ async function issueBook(id) {
             "Enter Member ID:"
         );
 
-    if (!memberId)
+
+    if (!memberId) {
         return;
+    }
+
 
     try {
 
         const body =
-            new URLSearchParams({
-                memberId: memberId
-            });
+            new URLSearchParams();
 
-        const res =
+        body.append(
+            "memberId",
+            memberId.trim()
+        );
+
+
+        const response =
             await fetch(
                 `/api/issue/${id}`,
                 {
                     method: "POST",
+
                     headers: {
                         "Content-Type":
                             "application/x-www-form-urlencoded"
                     },
-                    body: body
+
+                    body:
+                        body.toString()
                 }
             );
 
+
         const data =
-            await res.json();
+            await response.json();
+
 
         showMessage(
             data.message,
             data.success
         );
 
-        if (data.success)
+
+        if (data.success) {
+
             await loadBooks();
+        }
 
     }
     catch (error) {
 
-        console.error(error);
+        console.error(
+            "ISSUE ERROR:",
+            error
+        );
 
         showMessage(
             "Issue failed",
@@ -425,16 +631,16 @@ async function issueBook(id) {
     }
 }
 
+
 // ============================================================
 // RETURN BOOK
-// POST /api/return/:id
 // ============================================================
 
 async function returnBook(id) {
 
     try {
 
-        const res =
+        const response =
             await fetch(
                 `/api/return/${id}`,
                 {
@@ -442,21 +648,29 @@ async function returnBook(id) {
                 }
             );
 
+
         const data =
-            await res.json();
+            await response.json();
+
 
         showMessage(
             data.message,
             data.success
         );
 
-        if (data.success)
+
+        if (data.success) {
+
             await loadBooks();
+        }
 
     }
     catch (error) {
 
-        console.error(error);
+        console.error(
+            "RETURN ERROR:",
+            error
+        );
 
         showMessage(
             "Return failed",
@@ -464,6 +678,47 @@ async function returnBook(id) {
         );
     }
 }
+
+
+// ============================================================
+// CLOSE MODAL BY OUTSIDE CLICK
+// ============================================================
+
+window.addEventListener(
+    "click",
+    event => {
+
+        const modal =
+            $("modal");
+
+        if (
+            modal &&
+            event.target === modal
+        ) {
+            closeModal();
+        }
+
+    }
+);
+
+
+// ============================================================
+// ESC KEY CLOSE MODAL
+// ============================================================
+
+window.addEventListener(
+    "keydown",
+    event => {
+
+        if (
+            event.key === "Escape"
+        ) {
+            closeModal();
+        }
+
+    }
+);
+
 
 // ============================================================
 // INITIAL LOAD
