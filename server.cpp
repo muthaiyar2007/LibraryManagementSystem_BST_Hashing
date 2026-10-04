@@ -1,21 +1,21 @@
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <windows.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <vector>
+#include <cstdlib>
+#include <cstring>
 #include <algorithm>
-#include <cctype>
 
-#pragma comment(lib, "ws2_32.lib")
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+
 using namespace std;
 
-// ============================================================
-// LIBRARY MANAGEMENT SYSTEM
-// BST + CUSTOM HASH TABLE + SIMPLE C++ HTTP SERVER
-// ============================================================
+// ==================== BOOK STRUCTURE ====================
 
 struct Book {
     int id;
@@ -23,473 +23,903 @@ struct Book {
     string author;
     string category;
     bool issued;
-    int memberId;
+    string memberId;
 };
 
-string jsonEscape(const string& s) {
-    string out;
-    for (char c : s) {
-        if (c == '"') out += "\\\"";
-        else if (c == '\\') out += "\\\\";
-        else if (c == '\n') out += "\\n";
-        else if (c == '\r') out += "\\r";
-        else out += c;
+// ==================== BST ====================
+
+struct BSTNode {
+    Book book;
+    BSTNode* left;
+    BSTNode* right;
+
+    BSTNode(Book b) {
+        book = b;
+        left = nullptr;
+        right = nullptr;
     }
-    return out;
-}
+};
 
 class BST {
-    struct Node {
-        Book book;
-        Node* left;
-        Node* right;
-        Node(const Book& b) : book(b), left(nullptr), right(nullptr) {}
-    };
-    Node* root = nullptr;
+private:
+    BSTNode* root = nullptr;
 
-    Node* insert(Node* n, const Book& b) {
-        if (!n) return new Node(b);
-        if (b.id < n->book.id) n->left = insert(n->left, b);
-        else if (b.id > n->book.id) n->right = insert(n->right, b);
-        else n->book = b;
-        return n;
+    BSTNode* insertNode(BSTNode* node, Book book) {
+        if (!node)
+            return new BSTNode(book);
+
+        if (book.id < node->book.id)
+            node->left = insertNode(node->left, book);
+        else if (book.id > node->book.id)
+            node->right = insertNode(node->right, book);
+
+        return node;
     }
 
-    Node* minNode(Node* n) {
-        while (n && n->left) n = n->left;
-        return n;
+    BSTNode* searchNode(BSTNode* node, int id) {
+        if (!node || node->book.id == id)
+            return node;
+
+        if (id < node->book.id)
+            return searchNode(node->left, id);
+
+        return searchNode(node->right, id);
     }
 
-    Node* remove(Node* n, int id) {
-        if (!n) return nullptr;
-        if (id < n->book.id) n->left = remove(n->left, id);
-        else if (id > n->book.id) n->right = remove(n->right, id);
-        else {
-            if (!n->left) {
-                Node* r = n->right;
-                delete n;
-                return r;
-            }
-            if (!n->right) {
-                Node* l = n->left;
-                delete n;
-                return l;
-            }
-            Node* s = minNode(n->right);
-            n->book = s->book;
-            n->right = remove(n->right, s->book.id);
+    void inorder(BSTNode* node, vector<Book>& books) {
+        if (!node) return;
+
+        inorder(node->left, books);
+        books.push_back(node->book);
+        inorder(node->right, books);
+    }
+
+    BSTNode* minNode(BSTNode* node) {
+        BSTNode* current = node;
+
+        while (current && current->left)
+            current = current->left;
+
+        return current;
+    }
+
+    BSTNode* deleteNode(BSTNode* node, int id) {
+        if (!node)
+            return nullptr;
+
+        if (id < node->book.id) {
+            node->left = deleteNode(node->left, id);
         }
-        return n;
-    }
+        else if (id > node->book.id) {
+            node->right = deleteNode(node->right, id);
+        }
+        else {
+            if (!node->left) {
+                BSTNode* temp = node->right;
+                delete node;
+                return temp;
+            }
 
-    Node* search(Node* n, int id) {
-        if (!n || n->book.id == id) return n;
-        if (id < n->book.id) return search(n->left, id);
-        return search(n->right, id);
-    }
+            if (!node->right) {
+                BSTNode* temp = node->left;
+                delete node;
+                return temp;
+            }
 
-    void inorder(Node* n, vector<Book>& out) {
-        if (!n) return;
-        inorder(n->left, out);
-        out.push_back(n->book);
-        inorder(n->right, out);
-    }
+            BSTNode* temp = minNode(node->right);
+            node->book = temp->book;
+            node->right = deleteNode(node->right, temp->book.id);
+        }
 
-    void destroy(Node* n) {
-        if (!n) return;
-        destroy(n->left);
-        destroy(n->right);
-        delete n;
+        return node;
     }
 
 public:
-    ~BST() { destroy(root); }
-
-    void insert(const Book& b) { root = insert(root, b); }
-    void remove(int id) { root = remove(root, id); }
-    Book* search(int id) {
-        Node* n = search(root, id);
-        return n ? &n->book : nullptr;
+    void insert(Book book) {
+        root = insertNode(root, book);
     }
+
+    Book* search(int id) {
+        BSTNode* result = searchNode(root, id);
+
+        if (result)
+            return &result->book;
+
+        return nullptr;
+    }
+
+    void remove(int id) {
+        root = deleteNode(root, id);
+    }
+
     vector<Book> getAll() {
-        vector<Book> v;
-        inorder(root, v);
-        return v;
+        vector<Book> books;
+        inorder(root, books);
+        return books;
     }
 };
 
-// Custom hash table: separate chaining
+// ==================== HASH TABLE ====================
+
 class HashTable {
+private:
     static const int SIZE = 101;
+
     struct Entry {
-        int key;
+        int id;
         Book book;
         Entry* next;
-        Entry(int k, const Book& b) : key(k), book(b), next(nullptr) {}
+
+        Entry(int i, Book b) {
+            id = i;
+            book = b;
+            next = nullptr;
+        }
     };
+
     Entry* table[SIZE]{};
 
-    int hashFunc(int key) const {
-        if (key < 0) key = -key;
-        return key % SIZE;
+    int hashFunction(int id) {
+        return id % SIZE;
     }
 
 public:
-    ~HashTable() {
-        for (int i = 0; i < SIZE; ++i) {
-            Entry* p = table[i];
-            while (p) {
-                Entry* n = p->next;
-                delete p;
-                p = n;
-            }
-        }
-    }
+    void insert(Book book) {
+        int index = hashFunction(book.id);
 
-    void put(const Book& b) {
-        int h = hashFunc(b.id);
-        Entry* p = table[h];
-        while (p) {
-            if (p->key == b.id) {
-                p->book = b;
+        Entry* current = table[index];
+
+        while (current) {
+            if (current->id == book.id) {
+                current->book = book;
                 return;
             }
-            p = p->next;
+
+            current = current->next;
         }
-        Entry* e = new Entry(b.id, b);
-        e->next = table[h];
-        table[h] = e;
+
+        Entry* newEntry = new Entry(book.id, book);
+
+        newEntry->next = table[index];
+        table[index] = newEntry;
     }
 
-    bool get(int key, Book& result) const {
-        int h = hashFunc(key);
-        Entry* p = table[h];
-        while (p) {
-            if (p->key == key) {
-                result = p->book;
-                return true;
-            }
-            p = p->next;
+    Book* search(int id) {
+        int index = hashFunction(id);
+
+        Entry* current = table[index];
+
+        while (current) {
+            if (current->id == id)
+                return &current->book;
+
+            current = current->next;
         }
-        return false;
+
+        return nullptr;
     }
 
-    void erase(int key) {
-        int h = hashFunc(key);
-        Entry* p = table[h];
-        Entry* prev = nullptr;
-        while (p) {
-            if (p->key == key) {
-                if (prev) prev->next = p->next;
-                else table[h] = p->next;
-                delete p;
+    void remove(int id) {
+        int index = hashFunction(id);
+
+        Entry* current = table[index];
+        Entry* previous = nullptr;
+
+        while (current) {
+            if (current->id == id) {
+
+                if (previous)
+                    previous->next = current->next;
+                else
+                    table[index] = current->next;
+
+                delete current;
                 return;
             }
-            prev = p;
-            p = p->next;
+
+            previous = current;
+            current = current->next;
         }
     }
 };
+
+// ==================== GLOBAL DATA ====================
 
 BST bst;
 HashTable hashTable;
 
-string trim(const string& s) {
-    size_t a = s.find_first_not_of(" \t\r\n");
-    if (a == string::npos) return "";
-    size_t b = s.find_last_not_of(" \t\r\n");
-    return s.substr(a, b - a + 1);
+// ==================== FILE STORAGE ====================
+
+void saveBooks() {
+
+    ofstream file("books.txt");
+
+    vector<Book> books = bst.getAll();
+
+    for (Book& b : books) {
+
+        file << b.id << "|"
+             << b.title << "|"
+             << b.author << "|"
+             << b.category << "|"
+             << b.issued << "|"
+             << b.memberId << "\n";
+    }
+
+    file.close();
 }
 
-string urlDecode(const string& s) {
-    string out;
-    for (size_t i = 0; i < s.size(); i++) {
-        if (s[i] == '+') out += ' ';
-        else if (s[i] == '%' && i + 2 < s.size()) {
-            string hex = s.substr(i + 1, 2);
-            char c = static_cast<char>(strtol(hex.c_str(), nullptr, 16));
-            out += c;
+void loadBooks() {
+
+    ifstream file("books.txt");
+
+    if (!file)
+        return;
+
+    string line;
+
+    while (getline(file, line)) {
+
+        if (line.empty())
+            continue;
+
+        stringstream ss(line);
+
+        string id;
+        string title;
+        string author;
+        string category;
+        string issued;
+        string memberId;
+
+        getline(ss, id, '|');
+        getline(ss, title, '|');
+        getline(ss, author, '|');
+        getline(ss, category, '|');
+        getline(ss, issued, '|');
+        getline(ss, memberId, '|');
+
+        try {
+
+            Book book;
+
+            book.id = stoi(id);
+            book.title = title;
+            book.author = author;
+            book.category = category;
+            book.issued = (issued == "1");
+            book.memberId = memberId;
+
+            bst.insert(book);
+            hashTable.insert(book);
+
+        }
+        catch (...) {
+            continue;
+        }
+    }
+
+    file.close();
+}
+
+// ==================== URL DECODE ====================
+
+string urlDecode(string value) {
+
+    string result;
+
+    for (size_t i = 0; i < value.length(); i++) {
+
+        if (value[i] == '+') {
+            result += ' ';
+        }
+        else if (value[i] == '%' && i + 2 < value.length()) {
+
+            string hex = value.substr(i + 1, 2);
+
+            char ch = static_cast<char>(
+                strtol(hex.c_str(), nullptr, 16)
+            );
+
+            result += ch;
+
             i += 2;
-        } else out += s[i];
+        }
+        else {
+            result += value[i];
+        }
     }
-    return out;
-}
 
-vector<pair<string,string>> parseForm(const string& body) {
-    vector<pair<string,string>> result;
-    string part;
-    stringstream ss(body);
-    while (getline(ss, part, '&')) {
-        size_t eq = part.find('=');
-        if (eq == string::npos) continue;
-        result.push_back({urlDecode(part.substr(0, eq)), urlDecode(part.substr(eq + 1))});
-    }
     return result;
 }
 
-string getField(const vector<pair<string,string>>& fields, const string& key) {
-    for (auto& p : fields) if (p.first == key) return p.second;
-    return "";
+// ==================== FORM VALUE ====================
+
+string getValue(string body, string key) {
+
+    string searchKey = key + "=";
+
+    size_t start = body.find(searchKey);
+
+    if (start == string::npos)
+        return "";
+
+    start += searchKey.length();
+
+    size_t end = body.find('&', start);
+
+    if (end == string::npos)
+        end = body.length();
+
+    return urlDecode(body.substr(start, end - start));
 }
 
-void saveData() {
-    ofstream f("books.txt");
-    for (const Book& b : bst.getAll()) {
-        f << b.id << "|" << b.title << "|" << b.author << "|" << b.category
-          << "|" << (b.issued ? 1 : 0) << "|" << b.memberId << "\n";
-    }
-}
+// ==================== JSON ESCAPE ====================
 
-void loadData() {
-    ifstream f("books.txt");
-    if (!f) return;
-    string line;
-    while (getline(f, line)) {
-        stringstream ss(line);
-        string x;
-        vector<string> p;
-        while (getline(ss, x, '|')) p.push_back(x);
-        if (p.size() != 6) continue;
-        Book b;
-        b.id = stoi(p[0]);
-        b.title = p[1];
-        b.author = p[2];
-        b.category = p[3];
-        b.issued = (p[4] == "1");
-        b.memberId = stoi(p[5]);
-        bst.insert(b);
-        hashTable.put(b);
-    }
-}
+string jsonEscape(string value) {
 
-string bookJson(const Book& b) {
-    stringstream ss;
-    ss << "{\"id\":" << b.id
-       << ",\"title\":\"" << jsonEscape(b.title)
-       << "\",\"author\":\"" << jsonEscape(b.author)
-       << "\",\"category\":\"" << jsonEscape(b.category)
-       << "\",\"issued\":" << (b.issued ? "true" : "false")
-       << ",\"memberId\":" << b.memberId << "}";
-    return ss.str();
-}
+    string result;
 
-string allBooksJson() {
-    vector<Book> books = bst.getAll();
-    stringstream ss;
-    ss << "[";
-    for (size_t i = 0; i < books.size(); ++i) {
-        if (i) ss << ",";
-        ss << bookJson(books[i]);
-    }
-    ss << "]";
-    return ss.str();
-}
+    for (char c : value) {
 
-string jsonMessage(bool ok, const string& message) {
-    return string("{\"success\":") + (ok ? "true" : "false") +
-           ",\"message\":\"" + jsonEscape(message) + "\"}";
-}
+        if (c == '"')
+            result += "\\\"";
 
-string handleRequest(const string& method, const string& path, const string& body) {
-    if (method == "GET" && path == "/api/books") return allBooksJson();
+        else if (c == '\\')
+            result += "\\\\";
 
-    if (method == "GET" && path.rfind("/api/books/", 0) == 0) {
-        int id = stoi(path.substr(11));
-        Book b;
-        // Search using Hash Table to demonstrate O(1) average lookup.
-        if (hashTable.get(id, b)) return bookJson(b);
-        return jsonMessage(false, "Book not found");
+        else if (c == '\n')
+            result += "\\n";
+
+        else
+            result += c;
     }
 
-    if (method == "POST" && path == "/api/books") {
-        auto fields = parseForm(body);
-        try {
-            Book b;
-            b.id = stoi(getField(fields, "id"));
-            b.title = trim(getField(fields, "title"));
-            b.author = trim(getField(fields, "author"));
-            b.category = trim(getField(fields, "category"));
-            b.issued = false;
-            b.memberId = 0;
-
-            if (b.id <= 0 || b.title.empty() || b.author.empty()) 
-                return jsonMessage(false, "ID, title and author are required");
-
-            Book old;
-            if (hashTable.get(b.id, old))
-                return jsonMessage(false, "Book ID already exists");
-
-            bst.insert(b);
-            hashTable.put(b);
-            saveData();
-            return jsonMessage(true, "Book added successfully");
-        } catch (...) {
-            return jsonMessage(false, "Invalid book data");
-        }
-    }
-
-    if (method == "DELETE" && path.rfind("/api/books/", 0) == 0) {
-        try {
-            int id = stoi(path.substr(11));
-            Book b;
-            if (!hashTable.get(id, b)) return jsonMessage(false, "Book not found");
-            if (b.issued) return jsonMessage(false, "Return the book before deleting it");
-            bst.remove(id);
-            hashTable.erase(id);
-            saveData();
-            return jsonMessage(true, "Book deleted successfully");
-        } catch (...) {
-            return jsonMessage(false, "Invalid book ID");
-        }
-    }
-
-    if (method == "POST" && path.rfind("/api/issue/", 0) == 0) {
-        try {
-            int id = stoi(path.substr(11));
-            auto fields = parseForm(body);
-            int member = stoi(getField(fields, "memberId"));
-            Book b;
-            if (!hashTable.get(id, b)) return jsonMessage(false, "Book not found");
-            if (b.issued) return jsonMessage(false, "Book is already issued");
-            b.issued = true;
-            b.memberId = member;
-            bst.insert(b);
-            hashTable.put(b);
-            saveData();
-            return jsonMessage(true, "Book issued successfully");
-        } catch (...) {
-            return jsonMessage(false, "Invalid issue request");
-        }
-    }
-
-    if (method == "POST" && path.rfind("/api/return/", 0) == 0) {
-        try {
-            int id = stoi(path.substr(12));
-            Book b;
-            if (!hashTable.get(id, b)) return jsonMessage(false, "Book not found");
-            if (!b.issued) return jsonMessage(false, "Book is not currently issued");
-            b.issued = false;
-            b.memberId = 0;
-            bst.insert(b);
-            hashTable.put(b);
-            saveData();
-            return jsonMessage(true, "Book returned successfully");
-        } catch (...) {
-            return jsonMessage(false, "Invalid return request");
-        }
-    }
-
-    return jsonMessage(false, "API route not found");
+    return result;
 }
 
-string contentType(const string& path) {
-    if (path.size() >= 5 && path.substr(path.size()-5) == ".html") return "text/html";
-    if (path.size() >= 4 && path.substr(path.size()-4) == ".css") return "text/css";
-    if (path.size() >= 3 && path.substr(path.size()-3) == ".js") return "application/javascript";
-    return "text/plain";
+// ==================== BOOK JSON ====================
+
+string bookToJson(Book b) {
+
+    string json = "{";
+
+    json += "\"id\":" + to_string(b.id) + ",";
+    json += "\"title\":\"" + jsonEscape(b.title) + "\",";
+    json += "\"author\":\"" + jsonEscape(b.author) + "\",";
+    json += "\"category\":\"" + jsonEscape(b.category) + "\",";
+    json += "\"issued\":" + string(b.issued ? "true" : "false") + ",";
+    json += "\"memberId\":\"" + jsonEscape(b.memberId) + "\"";
+
+    json += "}";
+
+    return json;
 }
 
-string readFile(const string& filename) {
-    ifstream f(filename, ios::binary);
-    if (!f) return "";
-    stringstream ss;
-    ss << f.rdbuf();
-    return ss.str();
-}
+// ==================== HTTP RESPONSE ====================
 
-void sendResponse(SOCKET client, const string& status, const string& type, const string& body) {
-    string response = "HTTP/1.1 " + status + "\r\n"
-        "Content-Type: " + type + "; charset=utf-8\r\n"
+void sendResponse(
+    int client,
+    string body,
+    string contentType = "text/html"
+) {
+
+    string response =
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: " + contentType + "\r\n"
         "Content-Length: " + to_string(body.size()) + "\r\n"
-        "Access-Control-Allow-Origin: *\r\n"
-        "Connection: close\r\n\r\n" + body;
-    send(client, response.c_str(), (int)response.size(), 0);
+        "Connection: close\r\n"
+        "\r\n" +
+        body;
+
+    send(client, response.c_str(), response.size(), 0);
 }
 
-void serveClient(SOCKET client) {
-    char buffer[65536]{};
-    int received = recv(client, buffer, sizeof(buffer)-1, 0);
-    if (received <= 0) {
-        closesocket(client);
+// ==================== HTTP SERVER ====================
+
+void handleRequest(int client) {
+
+    string request;
+
+    char buffer[8192];
+
+    int received;
+
+    while ((received = recv(client, buffer, sizeof(buffer), 0)) > 0) {
+
+        request.append(buffer, received);
+
+        if (received < (int)sizeof(buffer))
+            break;
+    }
+
+    if (request.empty())
+        return;
+
+    size_t firstLineEnd = request.find("\r\n");
+
+    if (firstLineEnd == string::npos)
+        return;
+
+    string requestLine =
+        request.substr(0, firstLineEnd);
+
+    stringstream requestStream(requestLine);
+
+    string method;
+    string path;
+    string version;
+
+    requestStream >> method >> path >> version;
+
+    // ==================== GET ====================
+
+    if (method == "GET") {
+
+        // ---------- GET BOOKS ----------
+
+        if (path == "/api/books") {
+
+            vector<Book> books = bst.getAll();
+
+            string json = "[";
+
+            for (size_t i = 0; i < books.size(); i++) {
+
+                if (i > 0)
+                    json += ",";
+
+                json += bookToJson(books[i]);
+            }
+
+            json += "]";
+
+            sendResponse(
+                client,
+                json,
+                "application/json"
+            );
+
+            return;
+        }
+
+        // ---------- SEARCH BOOK ----------
+
+        if (path.rfind("/api/search?id=", 0) == 0) {
+
+            string idText =
+                path.substr(string("/api/search?id=").length());
+
+            try {
+
+                int id = stoi(idText);
+
+                Book* book = hashTable.search(id);
+
+                if (!book) {
+
+                    sendResponse(
+                        client,
+                        "{\"error\":\"Book not found\"}",
+                        "application/json"
+                    );
+
+                    return;
+                }
+
+                sendResponse(
+                    client,
+                    bookToJson(*book),
+                    "application/json"
+                );
+
+            }
+            catch (...) {
+
+                sendResponse(
+                    client,
+                    "{\"error\":\"Invalid ID\"}",
+                    "application/json"
+                );
+            }
+
+            return;
+        }
+
+        // ---------- STATIC FILES ----------
+
+        string filePath;
+
+        if (path == "/" || path == "/index.html")
+            filePath = "public/index.html";
+
+        else if (path == "/style.css")
+            filePath = "public/style.css";
+
+        else if (path == "/app.js")
+            filePath = "public/app.js";
+
+        else {
+
+            sendResponse(
+                client,
+                "404 Not Found"
+            );
+
+            return;
+        }
+
+        ifstream file(filePath);
+
+        if (!file) {
+
+            sendResponse(
+                client,
+                "File not found"
+            );
+
+            return;
+        }
+
+        stringstream contents;
+
+        contents << file.rdbuf();
+
+        string contentType = "text/plain";
+
+        if (path.find(".html") != string::npos)
+            contentType = "text/html";
+
+        else if (path.find(".css") != string::npos)
+            contentType = "text/css";
+
+        else if (path.find(".js") != string::npos)
+            contentType = "application/javascript";
+
+        sendResponse(
+            client,
+            contents.str(),
+            contentType
+        );
+
         return;
     }
 
-    string req(buffer, received);
-    size_t firstSpace = req.find(' ');
-    size_t secondSpace = req.find(' ', firstSpace + 1);
-    if (firstSpace == string::npos || secondSpace == string::npos) {
-        closesocket(client);
-        return;
+    // ==================== POST ====================
+
+    if (method == "POST") {
+
+        size_t headerEnd = request.find("\r\n\r\n");
+
+        if (headerEnd == string::npos)
+            return;
+
+        string body =
+            request.substr(headerEnd + 4);
+
+        // ---------- ADD BOOK ----------
+
+        if (path == "/api/add") {
+
+            try {
+
+                Book book;
+
+                book.id =
+                    stoi(getValue(body, "id"));
+
+                book.title =
+                    getValue(body, "title");
+
+                book.author =
+                    getValue(body, "author");
+
+                book.category =
+                    getValue(body, "category");
+
+                book.issued = false;
+                book.memberId = "";
+
+                if (hashTable.search(book.id)) {
+
+                    sendResponse(
+                        client,
+                        "{\"success\":false,\"message\":\"Book ID already exists\"}",
+                        "application/json"
+                    );
+
+                    return;
+                }
+
+                bst.insert(book);
+                hashTable.insert(book);
+
+                saveBooks();
+
+                sendResponse(
+                    client,
+                    "{\"success\":true,\"message\":\"Book added successfully\"}",
+                    "application/json"
+                );
+
+            }
+            catch (...) {
+
+                sendResponse(
+                    client,
+                    "{\"success\":false,\"message\":\"Invalid book data\"}",
+                    "application/json"
+                );
+            }
+
+            return;
+        }
+
+        // ---------- ISSUE BOOK ----------
+
+        if (path == "/api/issue") {
+
+            try {
+
+                int id =
+                    stoi(getValue(body, "id"));
+
+                string memberId =
+                    getValue(body, "memberId");
+
+                Book* book =
+                    hashTable.search(id);
+
+                if (!book) {
+
+                    sendResponse(
+                        client,
+                        "{\"success\":false,\"message\":\"Book not found\"}",
+                        "application/json"
+                    );
+
+                    return;
+                }
+
+                if (book->issued) {
+
+                    sendResponse(
+                        client,
+                        "{\"success\":false,\"message\":\"Book already issued\"}",
+                        "application/json"
+                    );
+
+                    return;
+                }
+
+                book->issued = true;
+                book->memberId = memberId;
+
+                bst.remove(id);
+                bst.insert(*book);
+
+                hashTable.insert(*book);
+
+                saveBooks();
+
+                sendResponse(
+                    client,
+                    "{\"success\":true,\"message\":\"Book issued successfully\"}",
+                    "application/json"
+                );
+
+            }
+            catch (...) {
+
+                sendResponse(
+                    client,
+                    "{\"success\":false,\"message\":\"Invalid request\"}",
+                    "application/json"
+                );
+            }
+
+            return;
+        }
+
+        // ---------- RETURN BOOK ----------
+
+        if (path == "/api/return") {
+
+            try {
+
+                int id =
+                    stoi(getValue(body, "id"));
+
+                Book* book =
+                    hashTable.search(id);
+
+                if (!book) {
+
+                    sendResponse(
+                        client,
+                        "{\"success\":false,\"message\":\"Book not found\"}",
+                        "application/json"
+                    );
+
+                    return;
+                }
+
+                book->issued = false;
+                book->memberId = "";
+
+                bst.remove(id);
+                bst.insert(*book);
+
+                hashTable.insert(*book);
+
+                saveBooks();
+
+                sendResponse(
+                    client,
+                    "{\"success\":true,\"message\":\"Book returned successfully\"}",
+                    "application/json"
+                );
+
+            }
+            catch (...) {
+
+                sendResponse(
+                    client,
+                    "{\"success\":false,\"message\":\"Invalid request\"}",
+                    "application/json"
+                );
+            }
+
+            return;
+        }
+
+        // ---------- DELETE BOOK ----------
+
+        if (path == "/api/delete") {
+
+            try {
+
+                int id =
+                    stoi(getValue(body, "id"));
+
+                Book* book =
+                    hashTable.search(id);
+
+                if (!book) {
+
+                    sendResponse(
+                        client,
+                        "{\"success\":false,\"message\":\"Book not found\"}",
+                        "application/json"
+                    );
+
+                    return;
+                }
+
+                bst.remove(id);
+                hashTable.remove(id);
+
+                saveBooks();
+
+                sendResponse(
+                    client,
+                    "{\"success\":true,\"message\":\"Book deleted successfully\"}",
+                    "application/json"
+                );
+
+            }
+            catch (...) {
+
+                sendResponse(
+                    client,
+                    "{\"success\":false,\"message\":\"Invalid request\"}",
+                    "application/json"
+                );
+            }
+
+            return;
+        }
     }
 
-    string method = req.substr(0, firstSpace);
-    string path = req.substr(firstSpace + 1, secondSpace - firstSpace - 1);
-
-    size_t headerEnd = req.find("\r\n\r\n");
-    string body = headerEnd == string::npos ? "" : req.substr(headerEnd + 4);
-
-    if (path.rfind("/api/", 0) == 0) {
-        string result = handleRequest(method, path, body);
-        sendResponse(client, "200 OK", "application/json", result);
-    } else {
-        if (path == "/") path = "/index.html";
-        string file = "public" + path;
-        string data = readFile(file);
-        if (data.empty()) sendResponse(client, "404 Not Found", "text/plain", "File not found");
-        else sendResponse(client, "200 OK", contentType(file), data);
-    }
-
-    closesocket(client);
+    sendResponse(
+        client,
+        "404 Not Found"
+    );
 }
+
+// ==================== MAIN ====================
 
 int main() {
-    loadData();
 
-    WSADATA wsa;
-    if (WSAStartup(MAKEWORD(2,2), &wsa) != 0) {
-        cerr << "WSAStartup failed.\n";
+    loadBooks();
+
+    int port = 10000;
+
+    const char* envPort =
+        getenv("PORT");
+
+    if (envPort)
+        port = atoi(envPort);
+
+    int serverSocket =
+        socket(AF_INET, SOCK_STREAM, 0);
+
+    if (serverSocket < 0) {
+
+        cerr << "Socket creation failed\n";
+
         return 1;
     }
 
-    SOCKET serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (serverSocket == INVALID_SOCKET) {
-        cerr << "Socket creation failed.\n";
-        WSACleanup();
+    int option = 1;
+
+    setsockopt(
+        serverSocket,
+        SOL_SOCKET,
+        SO_REUSEADDR,
+        &option,
+        sizeof(option)
+    );
+
+    sockaddr_in serverAddress{};
+
+    serverAddress.sin_family =
+        AF_INET;
+
+    serverAddress.sin_addr.s_addr =
+        INADDR_ANY;
+
+    serverAddress.sin_port =
+        htons(port);
+
+    if (bind(
+        serverSocket,
+        (sockaddr*)&serverAddress,
+        sizeof(serverAddress)
+    ) < 0) {
+
+        cerr << "Bind failed\n";
+
+        close(serverSocket);
+
         return 1;
     }
 
-    sockaddr_in serverAddr{};
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_addr.s_addr = INADDR_ANY;
-    serverAddr.sin_port = htons(8080);
+    if (listen(serverSocket, 10) < 0) {
 
-    if (bind(serverSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
-        cerr << "Bind failed. Is port 8080 already in use?\n";
-        closesocket(serverSocket);
-        WSACleanup();
+        cerr << "Listen failed\n";
+
+        close(serverSocket);
+
         return 1;
     }
 
-    if (listen(serverSocket, 10) == SOCKET_ERROR) {
-        cerr << "Listen failed.\n";
-        closesocket(serverSocket);
-        WSACleanup();
-        return 1;
-    }
-
-    cout << "\n============================================\n";
-    cout << " Library Management System - C++ Backend\n";
-    cout << " BST + Custom Hash Table\n";
-    cout << "============================================\n";
-    cout << "Server running at: http://localhost:8080\n";
-    cout << "Press Ctrl+C to stop.\n\n";
+    cout << "Library Management Server running on port "
+         << port << endl;
 
     while (true) {
-        SOCKET client = accept(serverSocket, nullptr, nullptr);
-        if (client != INVALID_SOCKET) serveClient(client);
+
+        sockaddr_in clientAddress{};
+
+        socklen_t clientLength =
+            sizeof(clientAddress);
+
+        int clientSocket =
+            accept(
+                serverSocket,
+                (sockaddr*)&clientAddress,
+                &clientLength
+            );
+
+        if (clientSocket < 0)
+            continue;
+
+        handleRequest(clientSocket);
+
+        close(clientSocket);
     }
 
-    closesocket(serverSocket);
-    WSACleanup();
+    close(serverSocket);
+
     return 0;
 }
